@@ -1,4 +1,5 @@
 import os
 import pandas as pd
 
-print('Hello World!')
+df = pd.read_csv("sales_data.csv")
+print(df.head())
