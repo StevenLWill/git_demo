@@ -11,3 +11,6 @@ print('All done')
 
 def numeric_data(x):
     return x * x
+
+
+my_list = [1,2,3]
