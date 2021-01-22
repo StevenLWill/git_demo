@@ -7,4 +7,7 @@ def plot_data(df):
     df.plot()
     return df
 
-print('Success!')
+print('All done')
+
+def numeric_data(x):
+    return x * x
