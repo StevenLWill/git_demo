@@ -1,0 +1,70 @@
+name: Code Review with AWS Bedrock
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  code-review-bedrock:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: 'us-east-1'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          pip install boto3 requests
+
+      - name: Set API Gateway URL based on model type
+        id: set-url
+        run: |
+          echo "API_GATEWAY_URL=https://f7i67qt942.execute-api.us-east-1.amazonaws.com/v1/code-review" >> $GITHUB_ENV
+
+      - name: Send Data to Lambda via API Gateway
+        run: |
+          # Ensure GITHUB_EVENT_PATH exists
+          if [ -z "$GITHUB_EVENT_PATH" ]; then
+            echo "GITHUB_EVENT_PATH is not set."
+            exit 1
+          elif [ ! -f "$GITHUB_EVENT_PATH" ]; then
+            echo "Event file does not exist at $GITHUB_EVENT_PATH."
+            exit 1
+          else
+            echo "GITHUB_EVENT_PATH is set and the event file exists."
+          fi
+
+          # Read the event data
+          GITHUB_EVENT_DATA=$(cat "$GITHUB_EVENT_PATH")
+
+          # Log content size for debugging
+          echo "Event data size: ${#GITHUB_EVENT_DATA} characters"
+          echo "API Gateway URL: $API_GATEWAY_URL"
+
+          # Escape the JSON payload for curl
+          ESCAPED_EVENT_DATA=$(echo "$GITHUB_EVENT_DATA" | jq -c '.')
+
+          if [ -z "$ESCAPED_EVENT_DATA" ]; then
+            echo "Error: Escaped event data is empty."
+            exit 1
+          fi
+
+          # Debug: Log that the event data is being sent (without printing it)
+          echo "Sending event data to Lambda via API Gateway."
+
+          # Send the event data to Lambda
+          curl -X POST "$API_GATEWAY_URL" \
+          -H "Content-Type: application/json" \
+          -d '{
+                "GITHUB_TOKEN": "'"$GITHUB_TOKEN"'",
+                "GITHUB_REPOSITORY": "'"$GITHUB_REPOSITORY"'",
+                "GITHUB_EVENT_DATA": '"$ESCAPED_EVENT_DATA"'
+              }'
